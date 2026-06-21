@@ -52,7 +52,6 @@
       margin: 0;
       font-size: 24px;
       line-height: 1.3;
-      letter-spacing: 0.02em;
     }
 
     .hero p {
@@ -75,6 +74,12 @@
       margin: 0 0 12px;
     }
 
+    .sub-title {
+      font-size: 16px;
+      margin: 0 0 10px;
+      color: var(--primary-dark);
+    }
+
     label {
       display: block;
       font-weight: 700;
@@ -83,7 +88,8 @@
     }
 
     input,
-    textarea {
+    textarea,
+    select {
       width: 100%;
       border: 1px solid #cfd8e3;
       border-radius: 12px;
@@ -95,13 +101,14 @@
     }
 
     input:focus,
-    textarea:focus {
+    textarea:focus,
+    select:focus {
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(15, 76, 129, 0.14);
     }
 
     textarea {
-      min-height: 120px;
+      min-height: 100px;
       resize: vertical;
     }
 
@@ -118,7 +125,6 @@
     .notice-list {
       padding-left: 1.2em;
       margin: 10px 0 0;
-      color: var(--text);
       font-size: 14px;
     }
 
@@ -229,11 +235,21 @@
       word-break: break-all;
     }
 
-    .uniform-card {
+    .type-card {
+      padding-bottom: 8px;
+    }
+
+    .uniform-item {
       display: grid;
       grid-template-columns: 72px 1fr;
       gap: 12px;
       align-items: start;
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .uniform-item:first-of-type {
+      border-top: none;
     }
 
     .number-badge {
@@ -272,11 +288,12 @@
 
     .uniform-actions {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
     }
 
-    .edit-area {
+    .edit-area,
+    .history-area {
       margin-top: 10px;
       padding: 12px;
       background: #f8fafc;
@@ -307,7 +324,34 @@
     .empty-state {
       text-align: center;
       color: var(--muted);
-      padding: 24px 12px;
+      padding: 18px 10px;
+    }
+
+    .history-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .history-list li {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 0;
+      font-size: 14px;
+    }
+
+    .history-list li:last-child {
+      border-bottom: none;
+    }
+
+    .history-date {
+      font-weight: 700;
+      color: var(--primary-dark);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--line);
+      margin: 18px 0;
     }
 
     @media (min-width: 640px) {
@@ -372,9 +416,7 @@
     function saveConsent() {
       try {
         localStorage.setItem(CONSENT_KEY, 'agreed');
-      } catch (error) {
-        // localStorageが使えない場合でも、その場では利用を継続できるようにする
-      }
+      } catch (error) {}
     }
 
     function showConsentPage() {
@@ -402,10 +444,6 @@
           <button id="agreeButton" class="button" type="button" style="margin-top:16px;">
             上記に同意して利用する
           </button>
-
-          <div class="hint">
-            同意すると、このブラウザでは次回以降この画面を省略します。
-          </div>
         </section>
       `;
 
@@ -423,7 +461,22 @@
         </section>
 
         <section class="card">
-          <h2 class="section-title">チームページを作成</h2>
+          <h2 class="section-title">既存のチームページを開く</h2>
+
+          <form id="openTeamForm">
+            <div class="form-row">
+              <label for="openTeamId">チームID</label>
+              <input id="openTeamId" type="text" placeholder="例：team_abcd1234">
+              <div class="hint">チーム専用URLの「?team=」以降の文字列を入力してください。</div>
+            </div>
+
+            <button class="button secondary" type="submit">チームページを開く</button>
+            <div id="openTeamStatus" class="status"></div>
+          </form>
+        </section>
+
+        <section class="card">
+          <h2 class="section-title">新しいチームページを作成</h2>
 
           <form id="createForm">
             <div class="form-row">
@@ -432,9 +485,15 @@
             </div>
 
             <div class="form-row">
+              <label for="uniformType">最初のユニフォーム種別</label>
+              <input id="uniformType" type="text" value="ユニフォーム1" placeholder="例：ホーム / アウェイ / 白 / 紺">
+              <div class="hint">後から最大3種類まで追加できます。</div>
+            </div>
+
+            <div class="form-row">
               <label for="numbers">所有している背番号</label>
-              <textarea id="numbers" placeholder="例：1, 2, 3, 10, 18&#10;カンマ・スペース・改行区切りで入力できます" required></textarea>
-              <div class="hint">後から管理画面で背番号を追加・削除できます。</div>
+              <textarea id="numbers" inputmode="numeric" placeholder="例：1, 2, 3, 10, 18&#10;数字・カンマ・スペース・改行のみ入力できます" required></textarea>
+              <div class="hint">背番号は数値のみ入力できます。後から管理画面で追加・削除できます。</div>
             </div>
 
             <button id="createButton" class="button" type="submit">
@@ -448,14 +507,38 @@
         <section id="createdResult"></section>
       `;
 
+      document.getElementById('openTeamForm').addEventListener('submit', handleOpenTeam);
       document.getElementById('createForm').addEventListener('submit', handleCreateTeam);
+
+      bindNumberOnlyInput('numbers');
+    }
+
+    function handleOpenTeam(event) {
+      event.preventDefault();
+
+      const teamId = document.getElementById('openTeamId').value.trim();
+      const status = document.getElementById('openTeamStatus');
+
+      status.className = 'status';
+      status.textContent = '';
+
+      if (!teamId) {
+        status.className = 'status error';
+        status.textContent = 'チームIDを入力してください。';
+        return;
+      }
+
+      location.href = `${getBaseUrl()}?team=${encodeURIComponent(teamId)}`;
     }
 
     async function handleCreateTeam(event) {
       event.preventDefault();
 
       const teamName = document.getElementById('teamName').value.trim();
-      const numbers = document.getElementById('numbers').value.trim();
+      const uniformType = document.getElementById('uniformType').value.trim() || 'ユニフォーム1';
+      const numbersInput = document.getElementById('numbers');
+      const numbers = numbersInput.value.trim();
+
       const button = document.getElementById('createButton');
       const status = document.getElementById('createStatus');
       const resultArea = document.getElementById('createdResult');
@@ -464,9 +547,17 @@
       status.textContent = '';
       resultArea.innerHTML = '';
 
+      const parsed = parseNumbersClient(numbers);
+
       if (!teamName || !numbers) {
         status.className = 'status error';
         status.textContent = 'チーム名と背番号を入力してください。';
+        return;
+      }
+
+      if (parsed.numbers.length === 0) {
+        status.className = 'status error';
+        status.textContent = '背番号を1つ以上入力してください。';
         return;
       }
 
@@ -476,7 +567,8 @@
       try {
         const data = await callApi('createTeam', {
           teamName,
-          numbers
+          uniformType,
+          numbers: parsed.numbers.join(',')
         });
 
         const shareUrl = buildTeamUrl(data.teamId);
@@ -517,12 +609,12 @@
       app.innerHTML = `
         <section class="hero">
           <h1>ユニフォーム管理</h1>
-          <p>背番号ごとに、いま誰が持っているかを確認・更新できます。</p>
+          <p>複数種類のユニフォームを、背番号ごとに管理できます。</p>
         </section>
 
         <div class="top-actions">
           <button id="refreshButton" class="button secondary small-button" type="button">再読み込み</button>
-          <a class="button ghost small-button" href="${escapeAttr(getBaseUrl())}" style="text-align:center; text-decoration:none;">新規作成</a>
+          <a class="button ghost small-button" href="${escapeAttr(getBaseUrl())}" style="text-align:center; text-decoration:none;">トップへ</a>
         </div>
 
         <section id="teamArea"></section>
@@ -545,10 +637,7 @@
       `;
 
       try {
-        const data = await callApi('getTeam', {
-          teamId
-        });
-
+        const data = await callApi('getTeam', { teamId });
         renderTeam(data);
       } catch (error) {
         teamArea.innerHTML = `
@@ -573,42 +662,30 @@
         return;
       }
 
-      const cards = data.items.map(item => {
-        const ownerText = item.owner || '未設定';
-        const ownerClass = item.owner ? 'owner' : 'owner empty';
+      const grouped = {};
+      data.uniformTypes.forEach(type => {
+        grouped[type] = [];
+      });
+
+      data.items.forEach(item => {
+        if (!grouped[item.uniformType]) {
+          grouped[item.uniformType] = [];
+        }
+        grouped[item.uniformType].push(item);
+      });
+
+      const typeSections = data.uniformTypes.map(type => {
+        const items = grouped[type] || [];
 
         return `
-          <section class="card uniform-card" data-number="${escapeAttr(item.number)}">
-            <div class="number-badge">${escapeHtml(item.number)}</div>
-
-            <div class="uniform-main">
-              <p class="${ownerClass}">${escapeHtml(ownerText)}</p>
-              <div class="updated">最終更新：${escapeHtml(item.updatedAt || '-')}</div>
-
-              <div class="uniform-actions">
-                <button class="button secondary small-button change-button" type="button">
-                  変更
-                </button>
-                <button class="button danger small-button delete-button" type="button">
-                  削除
-                </button>
-              </div>
-
-              <div class="edit-area" hidden>
-                <label>現在の所有者</label>
-                <input class="owner-input" type="text" value="${escapeAttr(item.owner || '')}" placeholder="例：山田 太郎">
-
-                <div class="edit-buttons">
-                  <button class="button small-button save-button" type="button">保存</button>
-                  <button class="button ghost small-button cancel-button" type="button">キャンセル</button>
-                </div>
-
-                <div class="status edit-status"></div>
-              </div>
-            </div>
+          <section class="card type-card">
+            <h2 class="sub-title">${escapeHtml(type)}</h2>
+            ${items.map(renderUniformItem).join('')}
           </section>
         `;
       }).join('');
+
+      const canAddNewType = data.uniformTypes.length < data.maxUniformTypes;
 
       teamArea.innerHTML = `
         <section class="card">
@@ -618,41 +695,115 @@
           </div>
 
           <p class="hint">
-            URLを知っている人はこのページを閲覧・編集できます。個人情報の入力は必要最小限にしてください。
+            現在のユニフォーム種別：${data.uniformTypes.length} / ${data.maxUniformTypes} 種類
           </p>
         </section>
 
         <section class="card">
           <h2 class="section-title">ユニフォームを追加</h2>
+
+          <div class="form-row">
+            <label for="addUniformTypeSelect">追加先のユニフォーム種別</label>
+            <select id="addUniformTypeSelect">
+              ${data.uniformTypes.map(type => `<option value="${escapeAttr(type)}">${escapeHtml(type)}</option>`).join('')}
+              ${canAddNewType ? '<option value="__new">新しいユニフォーム種別を追加</option>' : ''}
+            </select>
+            <div class="hint">ユニフォーム種別は最大${data.maxUniformTypes}種類までです。</div>
+          </div>
+
+          <div id="newTypeArea" class="form-row" hidden>
+            <label for="newUniformType">新しいユニフォーム種別名</label>
+            <input id="newUniformType" type="text" placeholder="例：アウェイ / 白 / 紺 / サブ">
+          </div>
+
           <div class="form-row">
             <label for="addNumbers">追加する背番号</label>
-            <input id="addNumbers" type="text" placeholder="例：6, 7, 8">
-            <div class="hint">カンマ・スペース・改行区切りで複数追加できます。既にある番号は追加されません。</div>
+            <input id="addNumbers" type="text" inputmode="numeric" placeholder="例：6, 7, 8">
+            <div class="hint">数字・カンマ・スペースのみ入力できます。同じ種別内で既にある番号は追加されません。</div>
           </div>
 
           <button id="addButton" class="button" type="button">追加する</button>
           <div id="addStatus" class="status"></div>
         </section>
 
-        ${cards}
+        ${typeSections}
       `;
 
-      bindAddUniformEvents(data.teamId);
+      bindAddUniformEvents(data);
       bindUniformEvents();
     }
 
-    function bindAddUniformEvents(teamId) {
+    function renderUniformItem(item) {
+      const ownerText = item.owner || '未設定';
+      const ownerClass = item.owner ? 'owner' : 'owner empty';
+
+      return `
+        <div class="uniform-item" data-type="${escapeAttr(item.uniformType)}" data-number="${escapeAttr(item.number)}">
+          <div class="number-badge">${escapeHtml(item.number)}</div>
+
+          <div class="uniform-main">
+            <p class="${ownerClass}">${escapeHtml(ownerText)}</p>
+            <div class="updated">最終更新：${escapeHtml(item.updatedAt || '-')}</div>
+
+            <div class="uniform-actions">
+              <button class="button secondary small-button change-button" type="button">変更</button>
+              <button class="button ghost small-button history-button" type="button">履歴</button>
+              <button class="button danger small-button delete-button" type="button">削除</button>
+            </div>
+
+            <div class="edit-area" hidden>
+              <label>現在の所有者</label>
+              <input class="owner-input" type="text" value="${escapeAttr(item.owner || '')}" placeholder="例：山田 太郎">
+
+              <div class="edit-buttons">
+                <button class="button small-button save-button" type="button">保存</button>
+                <button class="button ghost small-button cancel-button" type="button">キャンセル</button>
+              </div>
+
+              <div class="status edit-status"></div>
+            </div>
+
+            <div class="history-area" hidden></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function bindAddUniformEvents(data) {
+      const select = document.getElementById('addUniformTypeSelect');
+      const newTypeArea = document.getElementById('newTypeArea');
+      const newUniformType = document.getElementById('newUniformType');
       const addButton = document.getElementById('addButton');
       const addNumbers = document.getElementById('addNumbers');
       const addStatus = document.getElementById('addStatus');
 
-      addButton.addEventListener('click', async () => {
-        const numbers = addNumbers.value.trim();
+      bindNumberOnlyInput('addNumbers');
 
+      function toggleNewTypeArea() {
+        newTypeArea.hidden = select.value !== '__new';
+      }
+
+      select.addEventListener('change', toggleNewTypeArea);
+      toggleNewTypeArea();
+
+      addButton.addEventListener('click', async () => {
         addStatus.className = 'status';
         addStatus.textContent = '';
 
-        if (!numbers) {
+        const parsed = parseNumbersClient(addNumbers.value);
+        let uniformType = select.value;
+
+        if (uniformType === '__new') {
+          uniformType = newUniformType.value.trim();
+
+          if (!uniformType) {
+            addStatus.className = 'status error';
+            addStatus.textContent = '新しいユニフォーム種別名を入力してください。';
+            return;
+          }
+        }
+
+        if (parsed.numbers.length === 0) {
           addStatus.className = 'status error';
           addStatus.textContent = '追加する背番号を入力してください。';
           return;
@@ -662,23 +813,20 @@
         addButton.textContent = '追加中...';
 
         try {
-          const data = await callApi('addUniforms', {
-            teamId,
-            numbers
+          const result = await callApi('addUniforms', {
+            teamId: data.teamId,
+            uniformType,
+            numbers: parsed.numbers.join(',')
           });
 
-          let message = `${data.addedNumbers.length}件追加しました。`;
+          let message = `${result.uniformType} に ${result.addedNumbers.length}件追加しました。`;
 
-          if (data.skippedNumbers && data.skippedNumbers.length > 0) {
-            message += ` 登録済みの番号（${data.skippedNumbers.join(', ')}）はスキップしました。`;
+          if (result.skippedNumbers && result.skippedNumbers.length > 0) {
+            message += ` 登録済みの番号（${result.skippedNumbers.join(', ')}）はスキップしました。`;
           }
 
-          addStatus.className = 'status success';
-          addStatus.textContent = message;
-
-          addNumbers.value = '';
-
-          await loadTeam(teamId);
+          alert(message);
+          await loadTeam(data.teamId);
         } catch (error) {
           addStatus.className = 'status error';
           addStatus.textContent = error.message || '追加に失敗しました。';
@@ -690,11 +838,17 @@
     }
 
     function bindUniformEvents() {
-      document.querySelectorAll('.uniform-card').forEach(card => {
+      document.querySelectorAll('.uniform-item').forEach(card => {
+        const uniformType = card.dataset.type;
         const number = card.dataset.number;
+
         const changeButton = card.querySelector('.change-button');
+        const historyButton = card.querySelector('.history-button');
         const deleteButton = card.querySelector('.delete-button');
+
         const editArea = card.querySelector('.edit-area');
+        const historyArea = card.querySelector('.history-area');
+
         const cancelButton = card.querySelector('.cancel-button');
         const saveButton = card.querySelector('.save-button');
         const input = card.querySelector('.owner-input');
@@ -702,6 +856,7 @@
 
         changeButton.addEventListener('click', () => {
           editArea.hidden = false;
+          historyArea.hidden = true;
           changeButton.hidden = true;
           input.focus();
         });
@@ -725,6 +880,7 @@
           try {
             await callApi('updateOwner', {
               teamId: currentTeamId,
+              uniformType,
               number,
               owner
             });
@@ -739,8 +895,34 @@
           }
         });
 
+        historyButton.addEventListener('click', async () => {
+          if (!historyArea.hidden) {
+            historyArea.hidden = true;
+            historyButton.textContent = '履歴';
+            return;
+          }
+
+          editArea.hidden = true;
+          changeButton.hidden = false;
+          historyArea.hidden = false;
+          historyButton.textContent = '閉じる';
+          historyArea.innerHTML = '<div class="empty-state">履歴を読み込み中...</div>';
+
+          try {
+            const data = await callApi('getLogs', {
+              teamId: currentTeamId,
+              uniformType,
+              number
+            });
+
+            historyArea.innerHTML = renderHistory(data.logs);
+          } catch (error) {
+            historyArea.innerHTML = `<div class="status error">${escapeHtml(error.message || '履歴の取得に失敗しました。')}</div>`;
+          }
+        });
+
         deleteButton.addEventListener('click', async () => {
-          const ok = confirm(`背番号 ${number} を削除しますか？\n所有者情報も削除されます。`);
+          const ok = confirm(`${uniformType} の背番号 ${number} を削除しますか？\n所有者情報も削除されます。`);
 
           if (!ok) {
             return;
@@ -752,6 +934,7 @@
           try {
             await callApi('deleteUniform', {
               teamId: currentTeamId,
+              uniformType,
               number
             });
 
@@ -763,6 +946,65 @@
             deleteButton.textContent = '削除';
           }
         });
+      });
+    }
+
+    function renderHistory(logs) {
+      if (!logs || logs.length === 0) {
+        return '<div class="empty-state">この背番号の履歴はまだありません。</div>';
+      }
+
+      return `
+        <ul class="history-list">
+          ${logs.map(log => `
+            <li>
+              <div class="history-date">${escapeHtml(log.timestamp)}</div>
+              <div>${escapeHtml(log.action)}</div>
+              <div class="hint">
+                ${escapeHtml(displayOwner(log.oldOwner))} → ${escapeHtml(displayOwner(log.newOwner))}
+              </div>
+            </li>
+          `).join('')}
+        </ul>
+      `;
+    }
+
+    function displayOwner(value) {
+      return value ? value : '未設定';
+    }
+
+    function bindNumberOnlyInput(id) {
+      const element = document.getElementById(id);
+
+      if (!element) {
+        return;
+      }
+
+      element.addEventListener('input', () => {
+        const normalized = normalizeNumberText(element.value);
+        const cleaned = normalized.replace(/[^\d\s,、，]/g, '');
+
+        if (element.value !== cleaned) {
+          element.value = cleaned;
+        }
+      });
+    }
+
+    function parseNumbersClient(value) {
+      const normalized = normalizeNumberText(value);
+      const parts = String(normalized || '')
+        .split(/[\s,、，]+/)
+        .map(v => v.trim())
+        .filter(Boolean);
+
+      const numbers = [...new Set(parts.filter(v => /^\d+$/.test(v)))];
+
+      return { numbers };
+    }
+
+    function normalizeNumberText(value) {
+      return String(value || '').replace(/[０-９]/g, char => {
+        return String.fromCharCode(char.charCodeAt(0) - 0xFEE0);
       });
     }
 
