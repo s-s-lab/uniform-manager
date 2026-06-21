@@ -21,9 +21,7 @@
       --radius: 16px;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -301,7 +299,8 @@
       border: 1px solid var(--line);
     }
 
-    .edit-buttons {
+    .edit-buttons,
+    .type-buttons {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
@@ -346,12 +345,6 @@
     .history-date {
       font-weight: 700;
       color: var(--primary-dark);
-    }
-
-    .divider {
-      height: 1px;
-      background: var(--line);
-      margin: 18px 0;
     }
 
     @media (min-width: 640px) {
@@ -487,13 +480,13 @@
             <div class="form-row">
               <label for="uniformType">最初のユニフォーム種別</label>
               <input id="uniformType" type="text" value="ユニフォーム1" placeholder="例：ホーム / アウェイ / 白 / 紺">
-              <div class="hint">後から最大3種類まで追加できます。</div>
+              <div class="hint">ユニフォーム種別は後から追加・名称変更・削除できます。</div>
             </div>
 
             <div class="form-row">
               <label for="numbers">所有している背番号</label>
               <textarea id="numbers" inputmode="numeric" placeholder="例：1, 2, 3, 10, 18&#10;数字・カンマ・スペース・改行のみ入力できます" required></textarea>
-              <div class="hint">背番号は数値のみ入力できます。後から管理画面で追加・削除できます。</div>
+              <div class="hint">背番号は数値のみ入力できます。</div>
             </div>
 
             <button id="createButton" class="button" type="submit">
@@ -685,8 +678,6 @@
         `;
       }).join('');
 
-      const canAddNewType = data.uniformTypes.length < data.maxUniformTypes;
-
       teamArea.innerHTML = `
         <section class="card">
           <div class="team-header">
@@ -695,7 +686,7 @@
           </div>
 
           <p class="hint">
-            現在のユニフォーム種別：${data.uniformTypes.length} / ${data.maxUniformTypes} 種類
+            現在のユニフォーム種別：${data.uniformTypes.length} 種類
           </p>
         </section>
 
@@ -706,9 +697,8 @@
             <label for="addUniformTypeSelect">追加先のユニフォーム種別</label>
             <select id="addUniformTypeSelect">
               ${data.uniformTypes.map(type => `<option value="${escapeAttr(type)}">${escapeHtml(type)}</option>`).join('')}
-              ${canAddNewType ? '<option value="__new">新しいユニフォーム種別を追加</option>' : ''}
+              <option value="__new">新しいユニフォーム種別を追加</option>
             </select>
-            <div class="hint">ユニフォーム種別は最大${data.maxUniformTypes}種類までです。</div>
           </div>
 
           <div id="newTypeArea" class="form-row" hidden>
@@ -726,10 +716,38 @@
           <div id="addStatus" class="status"></div>
         </section>
 
+        <section class="card">
+          <h2 class="section-title">ユニフォーム種別の管理</h2>
+
+          <div class="form-row">
+            <label for="manageUniformTypeSelect">変更・削除する種別</label>
+            <select id="manageUniformTypeSelect">
+              ${data.uniformTypes.map(type => `<option value="${escapeAttr(type)}">${escapeHtml(type)}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="form-row">
+            <label for="renameUniformTypeName">新しい種別名</label>
+            <input id="renameUniformTypeName" type="text" placeholder="例：ホーム / アウェイ / 白">
+          </div>
+
+          <div class="type-buttons">
+            <button id="renameTypeButton" class="button secondary" type="button">名称を変更</button>
+            <button id="deleteTypeButton" class="button danger" type="button">この種別を削除</button>
+          </div>
+
+          <div class="hint">
+            種別を削除すると、その種別に属する背番号・所有者情報も削除されます。最後の1種類は削除できません。
+          </div>
+
+          <div id="typeManageStatus" class="status"></div>
+        </section>
+
         ${typeSections}
       `;
 
       bindAddUniformEvents(data);
+      bindTypeManagementEvents(data);
       bindUniformEvents();
     }
 
@@ -833,6 +851,102 @@
         } finally {
           addButton.disabled = false;
           addButton.textContent = '追加する';
+        }
+      });
+    }
+
+    function bindTypeManagementEvents(data) {
+      const select = document.getElementById('manageUniformTypeSelect');
+      const renameInput = document.getElementById('renameUniformTypeName');
+      const renameButton = document.getElementById('renameTypeButton');
+      const deleteButton = document.getElementById('deleteTypeButton');
+      const status = document.getElementById('typeManageStatus');
+
+      function syncRenameInput() {
+        renameInput.value = select.value || '';
+      }
+
+      select.addEventListener('change', syncRenameInput);
+      syncRenameInput();
+
+      renameButton.addEventListener('click', async () => {
+        const oldUniformType = select.value;
+        const newUniformType = renameInput.value.trim();
+
+        status.className = 'status';
+        status.textContent = '';
+
+        if (!oldUniformType) {
+          status.className = 'status error';
+          status.textContent = '変更対象の種別を選択してください。';
+          return;
+        }
+
+        if (!newUniformType) {
+          status.className = 'status error';
+          status.textContent = '新しい種別名を入力してください。';
+          return;
+        }
+
+        renameButton.disabled = true;
+        renameButton.textContent = '変更中...';
+
+        try {
+          const result = await callApi('renameUniformType', {
+            teamId: data.teamId,
+            oldUniformType,
+            newUniformType
+          });
+
+          alert(`${oldUniformType} を ${newUniformType} に変更しました。`);
+          await loadTeam(data.teamId);
+        } catch (error) {
+          status.className = 'status error';
+          status.textContent = error.message || '名称変更に失敗しました。';
+        } finally {
+          renameButton.disabled = false;
+          renameButton.textContent = '名称を変更';
+        }
+      });
+
+      deleteButton.addEventListener('click', async () => {
+        const uniformType = select.value;
+
+        status.className = 'status';
+        status.textContent = '';
+
+        if (!uniformType) {
+          status.className = 'status error';
+          status.textContent = '削除対象の種別を選択してください。';
+          return;
+        }
+
+        const ok = confirm(
+          `ユニフォーム種別「${uniformType}」を削除しますか？\n\n` +
+          `この種別に属する背番号・所有者情報もすべて削除されます。`
+        );
+
+        if (!ok) {
+          return;
+        }
+
+        deleteButton.disabled = true;
+        deleteButton.textContent = '削除中...';
+
+        try {
+          const result = await callApi('deleteUniformType', {
+            teamId: data.teamId,
+            uniformType
+          });
+
+          alert(`${uniformType} を削除しました。削除件数：${result.deletedCount}件`);
+          await loadTeam(data.teamId);
+        } catch (error) {
+          status.className = 'status error';
+          status.textContent = error.message || '削除に失敗しました。';
+        } finally {
+          deleteButton.disabled = false;
+          deleteButton.textContent = 'この種別を削除';
         }
       });
     }
@@ -961,7 +1075,7 @@
               <div class="history-date">${escapeHtml(log.timestamp)}</div>
               <div>${escapeHtml(log.action)}</div>
               <div class="hint">
-                ${escapeHtml(displayOwner(log.oldOwner))} → ${escapeHtml(displayOwner(log.newOwner))}
+                ${escapeHtml(displayValue(log.oldValue))} → ${escapeHtml(displayValue(log.newValue))}
               </div>
             </li>
           `).join('')}
@@ -969,7 +1083,7 @@
       `;
     }
 
-    function displayOwner(value) {
+    function displayValue(value) {
       return value ? value : '未設定';
     }
 
