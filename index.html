@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ユニフォーム所有者管理</title>
+
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --primary: #0f4c81;
+      --primary-dark: #0a355d;
+      --accent: #eaf3ff;
+      --danger: #b91c1c;
+      --success: #047857;
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 20px 14px 48px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, var(--primary), #153e75);
+      color: #fff;
+      padding: 24px 20px;
+      border-radius: 0 0 24px 24px;
+      margin: 0 -14px 20px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.3;
+      letter-spacing: 0.02em;
+    }
+
+    .hero p {
+      margin: 8px 0 0;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: 0 8px 24px rgba(15, 76, 129, 0.08);
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      margin: 0 0 12px;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid #cfd8e3;
+      border-radius: 12px;
+      padding: 12px 13px;
+      font-size: 16px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(15, 76, 129, 0.14);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .form-row {
+      margin-bottom: 16px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    .button {
+      appearance: none;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--primary);
+      color: #fff;
+      width: 100%;
+      min-height: 48px;
+    }
+
+    .button:hover {
+      background: var(--primary-dark);
+    }
+
+    .button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .button.secondary {
+      background: var(--accent);
+      color: var(--primary);
+    }
+
+    .button.ghost {
+      background: #fff;
+      color: var(--primary);
+      border: 1px solid #cfd8e3;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .status {
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .status.error {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .status.success {
+      color: var(--success);
+      font-weight: 700;
+    }
+
+    .share-box {
+      background: #f8fafc;
+      border: 1px dashed #b7c6d8;
+      border-radius: 14px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+
+    .share-url {
+      font-size: 14px;
+      word-break: break-all;
+      color: var(--primary-dark);
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px;
+      border: 1px solid var(--line);
+    }
+
+    .team-header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .team-name {
+      font-size: 22px;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .team-id {
+      color: var(--muted);
+      font-size: 13px;
+      word-break: break-all;
+    }
+
+    .uniform-card {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .number-badge {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: var(--accent);
+      color: var(--primary);
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .uniform-main {
+      min-width: 0;
+    }
+
+    .owner {
+      font-size: 17px;
+      font-weight: 800;
+      margin: 0 0 2px;
+      word-break: break-word;
+    }
+
+    .owner.empty {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .updated {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .edit-area {
+      margin-top: 10px;
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+    }
+
+    .edit-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .top-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .small-button {
+      min-height: 42px;
+      padding: 9px 12px;
+      font-size: 14px;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      padding: 24px 12px;
+    }
+
+    @media (min-width: 640px) {
+      .app {
+        padding-top: 28px;
+      }
+
+      .hero {
+        border-radius: 24px;
+        margin: 0 0 20px;
+      }
+
+      .button-row {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .button {
+        width: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app" class="app"></div>
+
+  <script>
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwbW9ujSht9YbJllgAj8dn2AAq-2w_f3Aw0Xto4YHWS5-Pb4zNKzmiqQJkDxSyUxhswHw/exec';
+
+    const app = document.getElementById('app');
+
+    let currentTeamId = new URLSearchParams(location.search).get('team');
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (currentTeamId) {
+        showTeamPage(currentTeamId);
+      } else {
+        showCreatePage();
+      }
+    });
+
+    function showCreatePage() {
+      app.innerHTML = `
+        <section class="hero">
+          <h1>ユニフォーム所有者管理</h1>
+          <p>チーム専用URLを作成して、背番号ごとの所有者をみんなで共有・更新できます。</p>
+        </section>
+
+        <section class="card">
+          <h2 class="section-title">チームページを作成</h2>
+
+          <form id="createForm">
+            <div class="form-row">
+              <label for="teamName">チーム名</label>
+              <input id="teamName" type="text" placeholder="例：渋谷ハンドボールクラブ" required>
+            </div>
+
+            <div class="form-row">
+              <label for="numbers">所有している背番号</label>
+              <textarea id="numbers" placeholder="例：1, 2, 3, 10, 18&#10;カンマ・スペース・改行区切りで入力できます" required></textarea>
+              <div class="hint">後から所有者名を登録・変更できます。</div>
+            </div>
+
+            <button id="createButton" class="button" type="submit">
+              チームページを作成
+            </button>
+
+            <div id="createStatus" class="status"></div>
+          </form>
+        </section>
+
+        <section id="createdResult"></section>
+      `;
+
+      document.getElementById('createForm').addEventListener('submit', handleCreateTeam);
+    }
+
+    async function handleCreateTeam(event) {
+      event.preventDefault();
+
+      const teamName = document.getElementById('teamName').value.trim();
+      const numbers = document.getElementById('numbers').value.trim();
+      const button = document.getElementById('createButton');
+      const status = document.getElementById('createStatus');
+      const resultArea = document.getElementById('createdResult');
+
+      status.className = 'status';
+      status.textContent = '';
+      resultArea.innerHTML = '';
+
+      if (!teamName || !numbers) {
+        status.className = 'status error';
+        status.textContent = 'チーム名と背番号を入力してください。';
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = '作成中...';
+
+      try {
+        const data = await callApi('createTeam', {
+          teamName,
+          numbers
+        });
+
+        const shareUrl = buildTeamUrl(data.teamId);
+
+        status.className = 'status success';
+        status.textContent = 'チームページを作成しました。';
+
+        resultArea.innerHTML = `
+          <section class="card">
+            <h2 class="section-title">チーム専用URL</h2>
+            <p class="hint">このURLをチームメンバーに共有してください。URLを知っている人は誰でも閲覧・編集できます。</p>
+
+            <div class="share-box">
+              <div id="shareUrl" class="share-url">${escapeHtml(shareUrl)}</div>
+            </div>
+
+            <div class="button-row">
+              <button id="copyButton" class="button secondary" type="button">URLをコピー</button>
+              <a class="button" href="${escapeAttr(shareUrl)}" style="text-align:center; text-decoration:none;">管理画面を開く</a>
+            </div>
+          </section>
+        `;
+
+        document.getElementById('copyButton').addEventListener('click', () => {
+          copyText(shareUrl);
+        });
+
+      } catch (error) {
+        status.className = 'status error';
+        status.textContent = error.message || '作成に失敗しました。';
+      } finally {
+        button.disabled = false;
+        button.textContent = 'チームページを作成';
+      }
+    }
+
+    async function showTeamPage(teamId) {
+      app.innerHTML = `
+        <section class="hero">
+          <h1>ユニフォーム管理</h1>
+          <p>背番号ごとに、いま誰が持っているかを確認・更新できます。</p>
+        </section>
+
+        <div class="top-actions">
+          <button id="refreshButton" class="button secondary small-button" type="button">再読み込み</button>
+          <a class="button ghost small-button" href="${escapeAttr(getBaseUrl())}" style="text-align:center; text-decoration:none;">新規作成</a>
+        </div>
+
+        <section id="teamArea"></section>
+      `;
+
+      document.getElementById('refreshButton').addEventListener('click', () => {
+        loadTeam(teamId);
+      });
+
+      await loadTeam(teamId);
+    }
+
+    async function loadTeam(teamId) {
+      const teamArea = document.getElementById('teamArea');
+
+      teamArea.innerHTML = `
+        <section class="card">
+          <div class="empty-state">読み込み中...</div>
+        </section>
+      `;
+
+      try {
+        const data = await callApi('getTeam', {
+          teamId
+        });
+
+        renderTeam(data);
+      } catch (error) {
+        teamArea.innerHTML = `
+          <section class="card">
+            <div class="status error">${escapeHtml(error.message || '読み込みに失敗しました。')}</div>
+          </section>
+        `;
+      }
+    }
+
+    function renderTeam(data) {
+      const teamArea = document.getElementById('teamArea');
+
+      if (!data.found) {
+        teamArea.innerHTML = `
+          <section class="card">
+            <h2 class="section-title">チームが見つかりません</h2>
+            <p class="hint">URLのチームIDが間違っている可能性があります。</p>
+            <div class="team-id">team=${escapeHtml(data.teamId || '')}</div>
+          </section>
+        `;
+        return;
+      }
+
+      const cards = data.items.map(item => {
+        const ownerText = item.owner || '未設定';
+        const ownerClass = item.owner ? 'owner' : 'owner empty';
+
+        return `
+          <section class="card uniform-card" data-number="${escapeAttr(item.number)}">
+            <div class="number-badge">${escapeHtml(item.number)}</div>
+
+            <div class="uniform-main">
+              <p class="${ownerClass}">${escapeHtml(ownerText)}</p>
+              <div class="updated">最終更新：${escapeHtml(item.updatedAt || '-')}</div>
+
+              <button class="button secondary small-button change-button" type="button">
+                変更
+              </button>
+
+              <div class="edit-area" hidden>
+                <label>現在の所有者</label>
+                <input class="owner-input" type="text" value="${escapeAttr(item.owner || '')}" placeholder="例：山田 太郎">
+
+                <div class="edit-buttons">
+                  <button class="button small-button save-button" type="button">保存</button>
+                  <button class="button ghost small-button cancel-button" type="button">キャンセル</button>
+                </div>
+
+                <div class="status edit-status"></div>
+              </div>
+            </div>
+          </section>
+        `;
+      }).join('');
+
+      teamArea.innerHTML = `
+        <section class="card">
+          <div class="team-header">
+            <h2 class="team-name">${escapeHtml(data.teamName)}</h2>
+            <div class="team-id">チームID：${escapeHtml(data.teamId)}</div>
+          </div>
+        </section>
+
+        ${cards}
+      `;
+
+      bindUniformEvents();
+    }
+
+    function bindUniformEvents() {
+      document.querySelectorAll('.uniform-card').forEach(card => {
+        const number = card.dataset.number;
+        const changeButton = card.querySelector('.change-button');
+        const editArea = card.querySelector('.edit-area');
+        const cancelButton = card.querySelector('.cancel-button');
+        const saveButton = card.querySelector('.save-button');
+        const input = card.querySelector('.owner-input');
+        const status = card.querySelector('.edit-status');
+
+        changeButton.addEventListener('click', () => {
+          editArea.hidden = false;
+          changeButton.hidden = true;
+          input.focus();
+        });
+
+        cancelButton.addEventListener('click', () => {
+          editArea.hidden = true;
+          changeButton.hidden = false;
+          status.textContent = '';
+          status.className = 'status edit-status';
+        });
+
+        saveButton.addEventListener('click', async () => {
+          const owner = input.value.trim();
+
+          status.textContent = '';
+          status.className = 'status edit-status';
+
+          saveButton.disabled = true;
+          saveButton.textContent = '保存中...';
+
+          try {
+            await callApi('updateOwner', {
+              teamId: currentTeamId,
+              number,
+              owner
+            });
+
+            await loadTeam(currentTeamId);
+          } catch (error) {
+            status.className = 'status edit-status error';
+            status.textContent = error.message || '保存に失敗しました。';
+          } finally {
+            saveButton.disabled = false;
+            saveButton.textContent = '保存';
+          }
+        });
+      });
+    }
+
+    function callApi(action, params = {}) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'uniformAppCallback_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+        const query = new URLSearchParams();
+
+        query.set('action', action);
+        query.set('callback', callbackName);
+
+        Object.entries(params).forEach(([key, value]) => {
+          query.set(key, value == null ? '' : String(value));
+        });
+
+        const separator = GAS_WEB_APP_URL.includes('?') ? '&' : '?';
+        const script = document.createElement('script');
+
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error('通信がタイムアウトしました。'));
+        }, 20000);
+
+        function cleanup() {
+          clearTimeout(timer);
+          delete window[callbackName];
+
+          if (script.parentNode) {
+            script.parentNode.removeChild(script);
+          }
+        }
+
+        window[callbackName] = response => {
+          cleanup();
+
+          if (response && response.ok) {
+            resolve(response);
+          } else {
+            reject(new Error(response && response.error ? response.error : 'APIエラーが発生しました。'));
+          }
+        };
+
+        script.onerror = () => {
+          cleanup();
+          reject(new Error('GASとの通信に失敗しました。'));
+        };
+
+        script.src = GAS_WEB_APP_URL + separator + query.toString();
+        document.body.appendChild(script);
+      });
+    }
+
+    function buildTeamUrl(teamId) {
+      return `${getBaseUrl()}?team=${encodeURIComponent(teamId)}`;
+    }
+
+    function getBaseUrl() {
+      return location.href.split('?')[0].split('#')[0];
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('URLをコピーしました。');
+      } catch (error) {
+        window.prompt('このURLをコピーしてください。', text);
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        }[char];
+      });
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value);
+    }
+  </script>
+</body>
+</html>
