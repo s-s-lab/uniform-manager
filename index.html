@@ -16,6 +16,7 @@
       --primary-dark: #0a355d;
       --accent: #eaf3ff;
       --danger: #b91c1c;
+      --danger-bg: #fee2e2;
       --success: #047857;
       --radius: 16px;
     }
@@ -114,6 +115,17 @@
       margin-top: 6px;
     }
 
+    .notice-list {
+      padding-left: 1.2em;
+      margin: 10px 0 0;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .notice-list li {
+      margin-bottom: 8px;
+    }
+
     .button {
       appearance: none;
       border: none;
@@ -146,6 +158,15 @@
       background: #fff;
       color: var(--primary);
       border: 1px solid #cfd8e3;
+    }
+
+    .button.danger {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .button.danger:hover {
+      background: #fecaca;
     }
 
     .button-row {
@@ -249,6 +270,12 @@
       margin-bottom: 10px;
     }
 
+    .uniform-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
     .edit-area {
       margin-top: 10px;
       padding: 12px;
@@ -310,17 +337,83 @@
   <script>
     const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwbW9ujSht9YbJllgAj8dn2AAq-2w_f3Aw0Xto4YHWS5-Pb4zNKzmiqQJkDxSyUxhswHw/exec';
 
-    const app = document.getElementById('app');
+    const CONSENT_KEY = 'uniform_manager_privacy_consent_v1';
 
+    const app = document.getElementById('app');
     let currentTeamId = new URLSearchParams(location.search).get('team');
 
     document.addEventListener('DOMContentLoaded', () => {
+      if (!hasConsent()) {
+        showConsentPage();
+        return;
+      }
+
+      routePage();
+    });
+
+    function routePage() {
+      currentTeamId = new URLSearchParams(location.search).get('team');
+
       if (currentTeamId) {
         showTeamPage(currentTeamId);
       } else {
         showCreatePage();
       }
-    });
+    }
+
+    function hasConsent() {
+      try {
+        return localStorage.getItem(CONSENT_KEY) === 'agreed';
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function saveConsent() {
+      try {
+        localStorage.setItem(CONSENT_KEY, 'agreed');
+      } catch (error) {
+        // localStorageが使えない場合でも、その場では利用を継続できるようにする
+      }
+    }
+
+    function showConsentPage() {
+      app.innerHTML = `
+        <section class="hero">
+          <h1>ユニフォーム所有者管理</h1>
+          <p>利用前に、個人情報の取扱いと免責事項をご確認ください。</p>
+        </section>
+
+        <section class="card">
+          <h2 class="section-title">個人情報の取扱い・免責事項</h2>
+
+          <p class="hint">
+            本システムは、チーム内でユニフォームの所有者を共有するための簡易的な管理ツールです。
+          </p>
+
+          <ul class="notice-list">
+            <li>入力された所有者名等の情報は、チーム専用URLを知っている人が閲覧・編集できます。</li>
+            <li>氏名以外の住所、電話番号、生年月日、健康情報、その他の機微な個人情報は入力しないでください。</li>
+            <li>チーム専用URLを第三者に共有した場合、その第三者も閲覧・編集できる可能性があります。</li>
+            <li>入力内容の正確性、データの保存、消失、漏えい、不正アクセス、誤操作、利用者間のトラブル等について、管理者は一切の責任を負いません。</li>
+            <li>本システムは利用者自身の責任において利用してください。</li>
+          </ul>
+
+          <button id="agreeButton" class="button" type="button" style="margin-top:16px;">
+            上記に同意して利用する
+          </button>
+
+          <div class="hint">
+            同意すると、このブラウザでは次回以降この画面を省略します。
+          </div>
+        </section>
+      `;
+
+      document.getElementById('agreeButton').addEventListener('click', () => {
+        saveConsent();
+        routePage();
+      });
+    }
 
     function showCreatePage() {
       app.innerHTML = `
@@ -341,7 +434,7 @@
             <div class="form-row">
               <label for="numbers">所有している背番号</label>
               <textarea id="numbers" placeholder="例：1, 2, 3, 10, 18&#10;カンマ・スペース・改行区切りで入力できます" required></textarea>
-              <div class="hint">後から所有者名を登録・変更できます。</div>
+              <div class="hint">後から管理画面で背番号を追加・削除できます。</div>
             </div>
 
             <button id="createButton" class="button" type="submit">
@@ -492,9 +585,14 @@
               <p class="${ownerClass}">${escapeHtml(ownerText)}</p>
               <div class="updated">最終更新：${escapeHtml(item.updatedAt || '-')}</div>
 
-              <button class="button secondary small-button change-button" type="button">
-                変更
-              </button>
+              <div class="uniform-actions">
+                <button class="button secondary small-button change-button" type="button">
+                  変更
+                </button>
+                <button class="button danger small-button delete-button" type="button">
+                  削除
+                </button>
+              </div>
 
               <div class="edit-area" hidden>
                 <label>現在の所有者</label>
@@ -518,18 +616,84 @@
             <h2 class="team-name">${escapeHtml(data.teamName)}</h2>
             <div class="team-id">チームID：${escapeHtml(data.teamId)}</div>
           </div>
+
+          <p class="hint">
+            URLを知っている人はこのページを閲覧・編集できます。個人情報の入力は必要最小限にしてください。
+          </p>
+        </section>
+
+        <section class="card">
+          <h2 class="section-title">ユニフォームを追加</h2>
+          <div class="form-row">
+            <label for="addNumbers">追加する背番号</label>
+            <input id="addNumbers" type="text" placeholder="例：6, 7, 8">
+            <div class="hint">カンマ・スペース・改行区切りで複数追加できます。既にある番号は追加されません。</div>
+          </div>
+
+          <button id="addButton" class="button" type="button">追加する</button>
+          <div id="addStatus" class="status"></div>
         </section>
 
         ${cards}
       `;
 
+      bindAddUniformEvents(data.teamId);
       bindUniformEvents();
+    }
+
+    function bindAddUniformEvents(teamId) {
+      const addButton = document.getElementById('addButton');
+      const addNumbers = document.getElementById('addNumbers');
+      const addStatus = document.getElementById('addStatus');
+
+      addButton.addEventListener('click', async () => {
+        const numbers = addNumbers.value.trim();
+
+        addStatus.className = 'status';
+        addStatus.textContent = '';
+
+        if (!numbers) {
+          addStatus.className = 'status error';
+          addStatus.textContent = '追加する背番号を入力してください。';
+          return;
+        }
+
+        addButton.disabled = true;
+        addButton.textContent = '追加中...';
+
+        try {
+          const data = await callApi('addUniforms', {
+            teamId,
+            numbers
+          });
+
+          let message = `${data.addedNumbers.length}件追加しました。`;
+
+          if (data.skippedNumbers && data.skippedNumbers.length > 0) {
+            message += ` 登録済みの番号（${data.skippedNumbers.join(', ')}）はスキップしました。`;
+          }
+
+          addStatus.className = 'status success';
+          addStatus.textContent = message;
+
+          addNumbers.value = '';
+
+          await loadTeam(teamId);
+        } catch (error) {
+          addStatus.className = 'status error';
+          addStatus.textContent = error.message || '追加に失敗しました。';
+        } finally {
+          addButton.disabled = false;
+          addButton.textContent = '追加する';
+        }
+      });
     }
 
     function bindUniformEvents() {
       document.querySelectorAll('.uniform-card').forEach(card => {
         const number = card.dataset.number;
         const changeButton = card.querySelector('.change-button');
+        const deleteButton = card.querySelector('.delete-button');
         const editArea = card.querySelector('.edit-area');
         const cancelButton = card.querySelector('.cancel-button');
         const saveButton = card.querySelector('.save-button');
@@ -572,6 +736,31 @@
           } finally {
             saveButton.disabled = false;
             saveButton.textContent = '保存';
+          }
+        });
+
+        deleteButton.addEventListener('click', async () => {
+          const ok = confirm(`背番号 ${number} を削除しますか？\n所有者情報も削除されます。`);
+
+          if (!ok) {
+            return;
+          }
+
+          deleteButton.disabled = true;
+          deleteButton.textContent = '削除中...';
+
+          try {
+            await callApi('deleteUniform', {
+              teamId: currentTeamId,
+              number
+            });
+
+            await loadTeam(currentTeamId);
+          } catch (error) {
+            alert(error.message || '削除に失敗しました。');
+          } finally {
+            deleteButton.disabled = false;
+            deleteButton.textContent = '削除';
           }
         });
       });
